@@ -27,11 +27,3 @@ def scroll_down_to_load_all(driver, delay):
         if new_scroll_height == scroll_height:
             return
         scroll_height = new_scroll_height
-
-
-def is_rate_limited(driver):
-    try:
-        driver.find_element_by_css_selector(RATE_LIMITED_SELECTOR)
-    except NoSuchElementException:
-        return False
-    return True

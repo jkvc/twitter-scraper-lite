@@ -15,9 +15,13 @@ from driver_util import *
 
 PROFILES = [
     'barackobama',
-    'realdonaldtrump'
+    'realdonaldtrump',
     'gavinnewsom',
-    'joebiden'
+    'joebiden',
+    'hillaryclinton',
+    'elonmusk',
+    'taylorswift13',
+    'theellenshow',
 ]
 
 BEGIN_DATE = '2010-01-01'
@@ -35,12 +39,12 @@ BASEURL = (
     'include%3Aretweets&src=typed_query&f=live'
 )
 
-NO_BROWSER = True
+HIDE_BROWSER = True
 CHROMEDRIVER_PATH = './chromedriver'
 CHROME_OPTIONS = Options()
 # TWEET_SELECTOR css depends on window width
 CHROME_OPTIONS.add_argument("--window-size=800,2000")
-if NO_BROWSER:
+if HIDE_BROWSER:
     CHROME_OPTIONS.add_argument("--headless")
 
 TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
@@ -101,6 +105,14 @@ def get_tweet_id(tweet_elem):
         ID_SELECTOR
     ).get_attribute('href').split('/')[-1]
     return tweet_id
+
+
+def is_rate_limited(driver):
+    try:
+        driver.find_element_by_css_selector(RATE_LIMITED_SELECTOR)
+    except NoSuchElementException:
+        return False
+    return True
 
 
 def get_driver():
@@ -169,11 +181,11 @@ def scrape_one_profile(profile_name, begin_date_str):
             begin_date
         )
     date_ranges = build_date_ranges(
-        begin_date, datetime.datetime.now() + datetime.timedelta(days=1)
+        begin_date, datetime.datetime.now()
     )
 
     driver = get_driver()
-    for begin_date, end_date in tqdm(date_ranges):
+    for begin_date, end_date in tqdm(date_ranges, desc=profile_name):
         url = build_url(profile_name, begin_date, end_date)
 
         # scrape one page and merge
@@ -192,7 +204,8 @@ def scrape_one_profile(profile_name, begin_date_str):
 
         save_data(profile_name, data)
 
-    print('done', profile_name, 'with', len(data['tweet_ids']), 'tweets')
+    print(
+        f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
     driver.close()
 
 
