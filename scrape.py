@@ -113,10 +113,7 @@ def scrape_one_page(driver, url, raw_dir):
     return tweet_ids
 
 
-def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir, quiet=True, chromedriver_options=CHROME_OPTIONS):
-    if quiet:
-        CHROME_OPTIONS.add_argument("--headless")
-
+def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
     data = load_metadata(profile_name, begin_date_str, meta_dir)
     print(
         f'start scraping [{profile_name}], already has [{len(data["tweet_ids"])}] tweets, latest at [{data["latest_date"]}]')
@@ -134,7 +131,6 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
         days_per_search
     )
 
-    driver = get_driver(chromedriver_options)
     for begin_date, end_date in tqdm(date_ranges, desc=profile_name):
         url = build_url(profile_name, begin_date, end_date)
 
@@ -156,7 +152,6 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
 
     print(
         f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
-    driver.close()
 
 
 if __name__ == "__main__":
@@ -180,6 +175,10 @@ if __name__ == "__main__":
             for s in f.readlines()
         ]
 
+    if args.quiet:
+        CHROME_OPTIONS.add_argument("--headless")
+    driver = get_driver(CHROME_OPTIONS)
+
     for profile_name in profile_names:
         scrape_one_profile(
             profile_name=profile_name,
@@ -187,5 +186,4 @@ if __name__ == "__main__":
             days_per_search=DEFAULT_DAYS_PER_SEARCH,
             meta_dir=args.meta_dir,
             raw_dir=args.raw_dir,
-            quiet=args.quiet,
         )
