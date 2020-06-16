@@ -181,7 +181,7 @@ def scrape_one_profile(profile_name, begin_date_str):
             begin_date
         )
     date_ranges = build_date_ranges(
-        begin_date, datetime.datetime.now()
+        begin_date, datetime.datetime.now() + datetime.timedelta(days=10)
     )
 
     driver = get_driver()

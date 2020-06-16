@@ -10,11 +10,11 @@ from concurrent.futures import ProcessPoolExecutor
 # USAGE: python parse.py <ids_dir> <raw_dir> <dst_dir>
 # this script writes json to <dst_dir> for each json profile in <ids_dir>
 
-DATE_ELEM_CLASSNAME = 'css-4rbku5 css-18t94o4 css-901oao r-1re7ezh r-1loqt21 r-1q142lx r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-3s2u2q r-qvutc0'
 TEXT_ELEM_CLASSNAME = 'css-901oao r-hkyrab r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-bnwqim r-qvutc0'
 STATS_ELEM_CLASSNAME = 'css-1dbjc4n r-18u37iz r-1wtj0ep r-156q2ks r-1mdbhws'
+REPLY_TO_ELEM_CLASSNAME = 'css-901oao r-1re7ezh r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-qvutc0'
 
-NUM_WORKER = 4
+NUM_WORKER = 1
 
 
 def parse_one_tweet(tweet_id, raw_path):
@@ -22,19 +22,9 @@ def parse_one_tweet(tweet_id, raw_path):
         raw_html = '\n'.join(f.readlines())
     soup = BeautifulSoup(raw_html, 'html.parser')
 
-    # the date
-    date_str = soup.find('a', {
-        'class': DATE_ELEM_CLASSNAME
-    }).text
-    # tweet from this year does not show year in string
-    if ',' not in date_str:
-        date_str += ', ' + str(datetime.datetime.now().year)
-    try:
-        date_obj = datetime.datetime.strptime(date_str, '%b %d, %Y')
-    except ValueError:
-        # less than one day
-        date_obj = datetime.datetime.now()
-    date_str = date_obj.strftime("%Y-%m-%d")
+    # the time
+    time_elem = soup.find('time')
+    time_str = time_elem['datetime']
 
     # the text
     text_elem = soup.find('div', {
@@ -59,12 +49,22 @@ def parse_one_tweet(tweet_id, raw_path):
             if stat_name in ['likes', 'like']:
                 likes = stat_num
 
+    # reply to
+    reply_to_elem = soup.find('div', {
+        'class': REPLY_TO_ELEM_CLASSNAME
+    })
+    if not reply_to_elem:
+        reply_to = None
+    else:
+        reply_to = reply_to_elem.div.a.span.text.replace('@', '')
+
     parsed = {
-        'date': date_str,
+        'time': time_str,
         'text': text_str,
         'replies': replies,
         'retweets': retweets,
         'likes': likes,
+        'reply_to': reply_to
     }
     return parsed
 
@@ -79,7 +79,7 @@ def parse_one_profile(id_filepath, raw_path, dst_path, hide_progress_bar=False):
     parsed_data = load_parsed_data(profile_name, dst_path)
     parsed_tweets = parsed_data['tweets']
 
-    for tweet_id in tqdm(tweet_ids, desc=profile_name, disable=hide_progress_bar, leave=False):
+    for tweet_id in tqdm(tweet_ids, desc=profile_name, disable=hide_progress_bar, leave=True):
         if tweet_id not in parsed_tweets:
             parsed_tweets[tweet_id] = parse_one_tweet(tweet_id, raw_path)
 
@@ -112,9 +112,5 @@ if __name__ == "__main__":
         if os.path.isfile(os.path.join(id_path, file))
     ))
 
-    with ProcessPoolExecutor(max_workers=NUM_WORKER) as executor:
-        for i, id_filepath in enumerate(id_filepaths):
-            executor.submit(
-                parse_one_profile,
-                id_filepath, raw_path, dst_path, NUM_WORKER > 1
-            )
+    for i, id_filepath in enumerate(id_filepaths):
+        parse_one_profile(id_filepath, raw_path, dst_path, False)
