@@ -1,35 +1,22 @@
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from time import sleep
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from pprint import pprint
 import json
 import datetime
 import os
-import pickle
+import argparse
 import sys
 
-from driver_util import *
+from utils import *
 
 
-PROFILES = [
-    'barackobama',
-    'realdonaldtrump',
-    'gavinnewsom',
-    'joebiden',
-    'hillaryclinton',
-    'elonmusk',
-    'taylorswift13',
-    'theellenshow',
-]
+DEFAULT_BEGIN_DATE = '2010-01-01'
+DEFAULT_DAYS_PER_SEARCH = 15
 
-BEGIN_DATE = '2010-01-01'
-DAYS_PER_SEARCH = 30
-IDS_DIR = 'ids'
-RAW_DIR = 'raw'
-
-PAGE_DELAY = 1.5  # seconds
+PAGE_DELAY = 1  # seconds
 RATE_LIMITED_DELAY = 30  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
@@ -39,13 +26,10 @@ BASEURL = (
     'include%3Aretweets&src=typed_query&f=live'
 )
 
-HIDE_BROWSER = True
 CHROMEDRIVER_PATH = './chromedriver'
 CHROME_OPTIONS = Options()
 # TWEET_SELECTOR css depends on window width
 CHROME_OPTIONS.add_argument("--window-size=800,2000")
-if HIDE_BROWSER:
-    CHROME_OPTIONS.add_argument("--headless")
 
 TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
 ID_SELECTOR = 'a.css-4rbku5.css-18t94o4.css-901oao.r-1re7ezh.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0'
@@ -55,49 +39,10 @@ RATE_LIMITED_SELECTOR = 'css-901oao.r-1re7ezh.r-1qd0xha.r-a023e6.r-16dba41.r-ad9
 ########################################################################
 
 
-def build_date_ranges(begin_date, end_date):
-    ranges = []
-    l = begin_date
-    while l < end_date:
-        r = l + datetime.timedelta(days=DAYS_PER_SEARCH)
-        if r > end_date:
-            r = end_date
-        ranges.append((l, r))
-        l = r
-    return ranges
-
-
 def build_url(profile_name, begin_date, end_date):
     begin_str = begin_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
     return BASEURL.format(profile_name, begin_str, end_str)
-
-
-def load_data(profile_name):
-    filepath = os.path.join(IDS_DIR, f'{profile_name}.json')
-    if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-    else:
-        data = {
-            'profile_name':  profile_name,
-            'latest_date': BEGIN_DATE,
-            'tweet_ids': []
-        }
-    return data
-
-
-def save_data(profile_name, data):
-    filepath = os.path.join(IDS_DIR, f'{profile_name}.json')
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=2)
-
-
-def save_raw(tweet_id, raw_html_str):
-    filepath = os.path.join(RAW_DIR, f'{tweet_id}.html')
-    with open(filepath, 'w') as f:
-        f.write(raw_html_str)
-        f.write('\n')
 
 
 def get_tweet_id(tweet_elem):
@@ -115,15 +60,15 @@ def is_rate_limited(driver):
     return True
 
 
-def get_driver():
+def get_driver(chromedriver_options=CHROME_OPTIONS):
     driver = webdriver.Chrome(
         executable_path=CHROMEDRIVER_PATH,
-        options=CHROME_OPTIONS,
+        options=chromedriver_options,
     )
     return driver
 
 
-def scrape_one_page(driver, url):
+def scrape_one_page(driver, url, raw_dir):
     driver.get(url)
     sleep(PAGE_DELAY)
 
@@ -141,10 +86,10 @@ def scrape_one_page(driver, url):
                 for elem in reversed(tweet_elems):
                     tweet_id = get_tweet_id(elem)
                     if tweet_id not in tweet_ids:
-                        tweet_ids.add(tweet_id)
                         raw_html_str = elem.get_attribute('outerHTML')
-                        save_raw(tweet_id, raw_html_str)
-            except StaleElementReferenceException:
+                        save_raw(tweet_id, raw_html_str, raw_dir)
+                        tweet_ids.add(tweet_id)
+            except (StaleElementReferenceException, WebDriverException):
                 continue
 
             scroll_down_viewheight(driver)
@@ -168,8 +113,11 @@ def scrape_one_page(driver, url):
     return tweet_ids
 
 
-def scrape_one_profile(profile_name, begin_date_str):
-    data = load_data(profile_name)
+def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir, quiet=True, chromedriver_options=CHROME_OPTIONS):
+    if quiet:
+        CHROME_OPTIONS.add_argument("--headless")
+
+    data = load_metadata(profile_name, begin_date_str, meta_dir)
     print(
         f'start scraping [{profile_name}], already has [{len(data["tweet_ids"])}] tweets, latest at [{data["latest_date"]}]')
     tweet_ids = set(data['tweet_ids'])
@@ -181,17 +129,19 @@ def scrape_one_profile(profile_name, begin_date_str):
             begin_date
         )
     date_ranges = build_date_ranges(
-        begin_date, datetime.datetime.now() + datetime.timedelta(days=10)
+        begin_date,
+        datetime.datetime.now() + datetime.timedelta(days=10),
+        days_per_search
     )
 
-    driver = get_driver()
+    driver = get_driver(chromedriver_options)
     for begin_date, end_date in tqdm(date_ranges, desc=profile_name):
         url = build_url(profile_name, begin_date, end_date)
 
         # scrape one page and merge
         new_tweet_ids = None
         while new_tweet_ids is None:
-            new_tweet_ids = scrape_one_page(driver, url)
+            new_tweet_ids = scrape_one_page(driver, url, raw_dir)
         tweet_ids = tweet_ids.union(new_tweet_ids)
         data['tweet_ids'] = list(tweet_ids)
 
@@ -202,7 +152,7 @@ def scrape_one_profile(profile_name, begin_date_str):
         ).strftime('%Y-%m-%d')
         data['latest_date'] = latest_date
 
-        save_data(profile_name, data)
+        save_metadata(profile_name, data, meta_dir)
 
     print(
         f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
@@ -210,5 +160,32 @@ def scrape_one_profile(profile_name, begin_date_str):
 
 
 if __name__ == "__main__":
-    for profile_name in PROFILES:
-        scrape_one_profile(profile_name, BEGIN_DATE)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'profiles', help='file containing profile strings, one per line')
+    parser.add_argument(
+        'meta_dir', help='dir to contain tweet ids json per profile')
+    parser.add_argument(
+        'raw_dir', help='dir to contain raw html files per tweet')
+    parser.add_argument(
+        '-q', '--quiet',
+        help="don't show browser window",
+        action='store_true',
+    )
+    args = parser.parse_args()
+
+    with open(args.profiles) as f:
+        profile_names = [
+            s.rstrip()
+            for s in f.readlines()
+        ]
+
+    for profile_name in profile_names:
+        scrape_one_profile(
+            profile_name=profile_name,
+            begin_date_str=DEFAULT_BEGIN_DATE,
+            days_per_search=DEFAULT_DAYS_PER_SEARCH,
+            meta_dir=args.meta_dir,
+            raw_dir=args.raw_dir,
+            quiet=args.quiet,
+        )

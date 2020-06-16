@@ -2,10 +2,13 @@ import os
 import json
 import sys
 import datetime
+import argparse
 from tqdm import tqdm, trange
 from pprint import pprint
 from bs4 import BeautifulSoup
 from concurrent.futures import ProcessPoolExecutor
+
+from utils import *
 
 # USAGE: python parse.py <ids_dir> <raw_dir> <dst_dir>
 # this script writes json to <dst_dir> for each json profile in <ids_dir>
@@ -13,8 +16,6 @@ from concurrent.futures import ProcessPoolExecutor
 TEXT_ELEM_CLASSNAME = 'css-901oao r-hkyrab r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-bnwqim r-qvutc0'
 STATS_ELEM_CLASSNAME = 'css-1dbjc4n r-18u37iz r-1wtj0ep r-156q2ks r-1mdbhws'
 REPLY_TO_ELEM_CLASSNAME = 'css-901oao r-1re7ezh r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-qvutc0'
-
-NUM_WORKER = 1
 
 
 def parse_one_tweet(tweet_id, raw_path):
@@ -74,43 +75,53 @@ def parse_one_profile(id_filepath, raw_path, dst_path, hide_progress_bar=False):
         id_data = json.load(f)
     profile_name = id_data['profile_name']
     tweet_ids = set(id_data['tweet_ids'])
-    print(f'begin parsing [{profile_name}]')
+    print(f'begin [{profile_name}]')
 
     parsed_data = load_parsed_data(profile_name, dst_path)
     parsed_tweets = parsed_data['tweets']
 
-    for tweet_id in tqdm(tweet_ids, desc=profile_name, disable=hide_progress_bar, leave=True):
+    for tweet_id in tqdm(tweet_ids, desc=profile_name, disable=hide_progress_bar, leave=False):
         if tweet_id not in parsed_tweets:
             parsed_tweets[tweet_id] = parse_one_tweet(tweet_id, raw_path)
 
     save_parsed_data(profile_name, dst_path, parsed_data)
-    print(f'done parsing [{profile_name}]')
-
-
-def load_parsed_data(profile_name, dst_path):
-    try:
-        with open(os.path.join(dst_path, f'{profile_name}.json')) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {
-            'profile_name': profile_name,
-            'tweets': {}
-        }
-
-
-def save_parsed_data(profile_name, dst_path, parsed_data):
-    with open(os.path.join(dst_path, f'{profile_name}.json'), 'w') as f:
-        json.dump(parsed_data, f, indent=2)
+    print(f' done [{profile_name}]')
 
 
 if __name__ == "__main__":
-    id_path, raw_path, dst_path = sys.argv[1:4]
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'meta_dir', help='dir to contain tweet ids json per profile')
+    parser.add_argument(
+        'raw_dir', help='dir to contain raw html files per tweet')
+    parser.add_argument(
+        'parsed_dir', help='dir to contain parsed json per profile')
+    parser.add_argument(
+        '-w', '--workers',
+        help='number of process, default 1',
+        type=int,
+        default=1
+    )
+    args = parser.parse_args()
 
-    id_filepaths = sorted(list(
-        os.path.join(id_path, file)
-        for file in os.listdir(id_path)
-        if os.path.isfile(os.path.join(id_path, file))
+    meta_filepaths = sorted(list(
+        os.path.join(args.meta_dir, file)
+        for file in os.listdir(args.meta_dir)
+        if os.path.isfile(os.path.join(args.meta_dir, file))
     ))
 
-    for i, id_filepath in enumerate(id_filepaths):
-        parse_one_profile(id_filepath, raw_path, dst_path, False)
+    if args.workers == 1:
+        for i, meta_filepath in enumerate(meta_filepaths):
+            parse_one_profile(
+                meta_filepath,
+                args.raw_dir,
+                args.parsed_dir,
+                False
+            )
+    else:
+        with ProcessPoolExecutor(max_workers=args.workers) as exe:
+            for i, meta_filepath in enumerate(meta_filepaths):
+                exe.submit(
+                    parse_one_profile,
+                    meta_filepath, args.raw_dir, args.parsed_dir, True
+                )
