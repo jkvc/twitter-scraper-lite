@@ -26,7 +26,10 @@ BASEURL = (
     'include%3Aretweets&src=typed_query&f=live'
 )
 
-CHROMEDRIVER_PATH = './chromedriver'
+CHROMEDRIVER_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    'chromedriver'
+)
 CHROME_OPTIONS = Options()
 # TWEET_SELECTOR css depends on window width
 CHROME_OPTIONS.add_argument("--window-size=800,2000")
