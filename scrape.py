@@ -33,10 +33,13 @@ CHROMEDRIVER_PATH = os.path.join(
 CHROME_OPTIONS = Options()
 # TWEET_SELECTOR css depends on window width
 CHROME_OPTIONS.add_argument("--window-size=800,2000")
+# dont show images
+prefs = {"profile.managed_default_content_settings.images": 2}
+CHROME_OPTIONS.add_experimental_option("prefs", prefs)
 
 TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
 ID_SELECTOR = 'a.css-4rbku5.css-18t94o4.css-901oao.r-1re7ezh.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0'
-RATE_LIMITED_SELECTOR = 'div.css-18t94o4.css-1dbjc4n.r-urgr8i.r-42olwf.r-sdzlij.r-1phboty.r-rs99b7.r-1w2pmg.r-1vuscfd.r-1dhvaqw.r-1ny4l3l.r-1fneopy.r-o7ynqc.r-6416eg.r-lrvibr'
+# RATE_LIMITED_SELECTOR = 'div.css-18t94o4.css-1dbjc4n.r-urgr8i.r-42olwf.r-sdzlij.r-1phboty.r-rs99b7.r-1w2pmg.r-1vuscfd.r-1dhvaqw.r-1ny4l3l.r-1fneopy.r-o7ynqc.r-6416eg.r-lrvibr'
 
 
 ########################################################################
@@ -57,7 +60,8 @@ def get_tweet_id(tweet_elem):
 
 def is_rate_limited(driver):
     try:
-        driver.find_element_by_css_selector(RATE_LIMITED_SELECTOR)
+        rle = driver.find_element_by_css_selector(RATE_LIMITED_SELECTOR)
+        print('rle', rle.get_attribute('outerHTML'))
     except NoSuchElementException:
         return False
     return True
@@ -73,14 +77,11 @@ def get_driver(chromedriver_options=CHROME_OPTIONS):
 
 def scrape_one_page(driver, url, profile_name, raw_dir):
     driver.get(url)
-    sleep(PAGE_DELAY)
-
     scroll_down_to_load_all(driver, PAGE_DELAY)
 
     tweet_ids = set()
     try:
         scroll_to_top(driver)
-        sleep(0.1)
         prev_scroll_height = 0
 
         while True:
@@ -96,7 +97,6 @@ def scrape_one_page(driver, url, profile_name, raw_dir):
                 continue
 
             scroll_down_viewheight(driver)
-            sleep(0.1)
             curr_scroll_height = get_curr_scroll_height(driver)
 
             if curr_scroll_height == prev_scroll_height:
@@ -106,18 +106,17 @@ def scrape_one_page(driver, url, profile_name, raw_dir):
     except NoSuchElementException:
         pass
 
-    if is_rate_limited(driver):
-        print('rate limited, sleep')
-        driver.delete_all_cookies()
-        sleep(RATE_LIMITED_DELAY)
-        return None
+    # if is_rate_limited(driver):
+    #     print('rate limited, sleep')
+    #     driver.delete_all_cookies()
+    #     sleep(RATE_LIMITED_DELAY)
+    #     return None
 
     driver.delete_all_cookies()
     return tweet_ids
 
 
-def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
-    driver = get_driver(CHROME_OPTIONS)
+def scrape_one_profile(driver, profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
 
     data = load_metadata(profile_name, begin_date_str, meta_dir)
     print(
@@ -158,8 +157,6 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
     print(
         f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
 
-    driver.close()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -184,9 +181,11 @@ if __name__ == "__main__":
 
     if args.quiet:
         CHROME_OPTIONS.add_argument("--headless")
+    driver = get_driver(CHROME_OPTIONS)
 
     for profile_name in profile_names:
         scrape_one_profile(
+            driver=driver,
             profile_name=profile_name,
             begin_date_str=DEFAULT_BEGIN_DATE,
             days_per_search=DEFAULT_DAYS_PER_SEARCH,
