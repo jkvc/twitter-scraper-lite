@@ -3,6 +3,7 @@ from selenium.common.exceptions import NoSuchElementException, StaleElementRefer
 from selenium.webdriver.chrome.options import Options
 from time import sleep
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
 from pprint import pprint
 import json
 import datetime
@@ -14,10 +15,10 @@ from utils import *
 
 
 DEFAULT_BEGIN_DATE = '2015-01-01'
-DEFAULT_DAYS_PER_SEARCH = 30
+DEFAULT_DAYS_PER_SEARCH = 7
 
-PAGE_DELAY = 1  # seconds
-RATE_LIMITED_DELAY = 45  # second
+PAGE_DELAY = 1.5  # seconds
+RATE_LIMITED_DELAY = 30  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
     'from%3A{}%20' +
@@ -39,8 +40,7 @@ CHROME_OPTIONS.add_experimental_option("prefs", prefs)
 
 TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
 ID_SELECTOR = 'a.css-4rbku5.css-18t94o4.css-901oao.r-1re7ezh.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0'
-# RATE_LIMITED_SELECTOR = 'div.css-18t94o4.css-1dbjc4n.r-urgr8i.r-42olwf.r-sdzlij.r-1phboty.r-rs99b7.r-1w2pmg.r-1vuscfd.r-1dhvaqw.r-1ny4l3l.r-1fneopy.r-o7ynqc.r-6416eg.r-lrvibr'
-
+NO_RESULT_SELECTOR = 'div.css-901oao.r-hkyrab.r-1qd0xha.r-1b6yd1w.r-vw2c0b.r-ad9z0x.r-15d164r.r-bcqeeo.r-q4m81j.r-qvutc0'
 
 ########################################################################
 
@@ -58,13 +58,14 @@ def get_tweet_id(tweet_elem):
     return tweet_id
 
 
-def is_rate_limited(driver):
-    try:
-        rle = driver.find_element_by_css_selector(RATE_LIMITED_SELECTOR)
-        print('rle', rle.get_attribute('outerHTML'))
-    except NoSuchElementException:
+def is_rate_limited(driver, tweet_ids):
+    if len(tweet_ids) > 0:
         return False
-    return True
+    try:
+        rle = driver.find_element_by_css_selector(NO_RESULT_SELECTOR)
+    except NoSuchElementException:
+        return True
+    return False
 
 
 def get_driver(chromedriver_options=CHROME_OPTIONS):
@@ -83,6 +84,7 @@ def scrape_one_page(driver, url, profile_name, raw_dir):
     try:
         scroll_to_top(driver)
         prev_scroll_height = 0
+        sleep(.1)
 
         while True:
             tweet_elems = driver.find_elements_by_css_selector(TWEET_SELECTOR)
@@ -97,26 +99,28 @@ def scrape_one_page(driver, url, profile_name, raw_dir):
                 continue
 
             scroll_down_viewheight(driver)
+            sleep(.1)
             curr_scroll_height = get_curr_scroll_height(driver)
 
-            if curr_scroll_height == prev_scroll_height:
+            if curr_scroll_height <= prev_scroll_height:
                 break
             prev_scroll_height = curr_scroll_height
 
     except NoSuchElementException:
         pass
 
-    # if is_rate_limited(driver):
-    #     print('rate limited, sleep')
-    #     driver.delete_all_cookies()
-    #     sleep(RATE_LIMITED_DELAY)
-    #     return None
+    if is_rate_limited(driver, tweet_ids):
+        print(f'rate limited, {profile_name}')
+        driver.delete_all_cookies()
+        sleep(RATE_LIMITED_DELAY)
+        return None
 
     driver.delete_all_cookies()
     return tweet_ids
 
 
-def scrape_one_profile(driver, profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
+def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
+    driver = get_driver(CHROME_OPTIONS)
 
     data = load_metadata(profile_name, begin_date_str, meta_dir)
     print(
@@ -131,7 +135,7 @@ def scrape_one_profile(driver, profile_name, begin_date_str, days_per_search, me
         )
     date_ranges = build_date_ranges(
         begin_date,
-        datetime.datetime.now() + datetime.timedelta(days=10),
+        datetime.datetime.now() + datetime.timedelta(days=2),
         days_per_search
     )
 
@@ -139,9 +143,14 @@ def scrape_one_profile(driver, profile_name, begin_date_str, days_per_search, me
         url = build_url(profile_name, begin_date, end_date)
 
         # scrape one page and merge
-        new_tweet_ids = None
-        while new_tweet_ids is None:
+        while True:
             new_tweet_ids = scrape_one_page(driver, url, profile_name, raw_dir)
+            if new_tweet_ids is None:
+                driver.close()
+                driver = get_driver(CHROME_OPTIONS)
+            else:
+                break
+
         tweet_ids = tweet_ids.union(new_tweet_ids)
         data['tweet_ids'] = list(tweet_ids)
 
@@ -157,6 +166,8 @@ def scrape_one_profile(driver, profile_name, begin_date_str, days_per_search, me
     print(
         f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
 
+    driver.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -166,6 +177,11 @@ if __name__ == "__main__":
         'meta_dir', help='dir to contain tweet ids json per profile')
     parser.add_argument(
         'raw_dir', help='dir to contain raw html files per tweet')
+    parser.add_argument(
+        '-w', '--workers',
+        type=int,
+        default=1
+    )
     parser.add_argument(
         '-q', '--quiet',
         help="don't show browser window",
@@ -181,14 +197,22 @@ if __name__ == "__main__":
 
     if args.quiet:
         CHROME_OPTIONS.add_argument("--headless")
-    driver = get_driver(CHROME_OPTIONS)
 
-    for profile_name in profile_names:
-        scrape_one_profile(
-            driver=driver,
-            profile_name=profile_name,
-            begin_date_str=DEFAULT_BEGIN_DATE,
-            days_per_search=DEFAULT_DAYS_PER_SEARCH,
-            meta_dir=args.meta_dir,
-            raw_dir=args.raw_dir,
-        )
+    with ProcessPoolExecutor(max_workers=args.workers) as exe:
+        for profile_name in profile_names:
+            exe.submit(
+                scrape_one_profile,
+                profile_name,
+                DEFAULT_BEGIN_DATE,
+                DEFAULT_DAYS_PER_SEARCH,
+                args.meta_dir,
+                args.raw_dir
+            )
+            # scrape_one_profile(
+            #     driver=driver,
+            #     profile_name=profile_name,
+            #     begin_date_str=DEFAULT_BEGIN_DATE,
+            #     days_per_search=DEFAULT_DAYS_PER_SEARCH,
+            #     meta_dir=args.meta_dir,
+            #     raw_dir=args.raw_dir,
+            # )
