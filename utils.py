@@ -66,16 +66,19 @@ def save_metadata(profile_name, data, ids_dir):
         json.dump(data, f, indent=2)
 
 
-def save_raw(tweet_id, raw_html_str, raw_dir):
+def save_raw(tweet_id, raw_html_str, raw_dir, profile_name):
     """save raw html to <id>.html
 
     Args:
     - tweet_id (str): the tweet id
     - raw_html_str (str): content to save
     - raw_dir (str): dir containing all the html fiels
+    - profile_name (str): 
     """
 
-    filepath = os.path.join(raw_dir, f'{tweet_id}.html')
+    if not os.path.exists(os.path.join(raw_dir, profile_name)):
+        os.mkdir(os.path.join(raw_dir, profile_name))
+    filepath = os.path.join(raw_dir, profile_name, f'{tweet_id}.html')
     with open(filepath, 'w') as f:
         f.write(raw_html_str)
         f.write('\n')

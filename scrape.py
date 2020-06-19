@@ -71,7 +71,7 @@ def get_driver(chromedriver_options=CHROME_OPTIONS):
     return driver
 
 
-def scrape_one_page(driver, url, raw_dir):
+def scrape_one_page(driver, url, profile_name, raw_dir):
     driver.get(url)
     sleep(PAGE_DELAY)
 
@@ -90,7 +90,7 @@ def scrape_one_page(driver, url, raw_dir):
                     tweet_id = get_tweet_id(elem)
                     if tweet_id not in tweet_ids:
                         raw_html_str = elem.get_attribute('outerHTML')
-                        save_raw(tweet_id, raw_html_str, raw_dir)
+                        save_raw(tweet_id, raw_html_str, raw_dir, profile_name)
                         tweet_ids.add(tweet_id)
             except (StaleElementReferenceException, WebDriverException):
                 continue
@@ -142,7 +142,7 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
         # scrape one page and merge
         new_tweet_ids = None
         while new_tweet_ids is None:
-            new_tweet_ids = scrape_one_page(driver, url, raw_dir)
+            new_tweet_ids = scrape_one_page(driver, url, profile_name, raw_dir)
         tweet_ids = tweet_ids.union(new_tweet_ids)
         data['tweet_ids'] = list(tweet_ids)
 
