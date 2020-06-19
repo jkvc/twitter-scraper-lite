@@ -18,8 +18,9 @@ STATS_ELEM_CLASSNAME = 'css-1dbjc4n r-18u37iz r-1wtj0ep r-156q2ks r-1mdbhws'
 REPLY_TO_ELEM_CLASSNAME = 'css-901oao r-1re7ezh r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-qvutc0'
 
 
-def parse_one_tweet(tweet_id, raw_path):
-    with open(os.path.join(raw_path, f'{tweet_id}.html')) as f:
+def parse_one_tweet(profile_name, tweet_id, raw_path):
+    raw_path = os.path.join(raw_path, profile_name, f'{tweet_id}.html')
+    with open(raw_path) as f:
         raw_html = '\n'.join(f.readlines())
     soup = BeautifulSoup(raw_html, 'html.parser')
 
@@ -82,7 +83,8 @@ def parse_one_profile(id_filepath, raw_path, dst_path, hide_progress_bar=False):
 
     for tweet_id in tqdm(tweet_ids, desc=profile_name, disable=hide_progress_bar, leave=False):
         if tweet_id not in parsed_tweets:
-            parsed_tweets[tweet_id] = parse_one_tweet(tweet_id, raw_path)
+            parsed_tweets[tweet_id] = parse_one_tweet(
+                profile_name, tweet_id, raw_path)
 
     save_parsed_data(profile_name, dst_path, parsed_data)
     print(f' done [{profile_name}]')
