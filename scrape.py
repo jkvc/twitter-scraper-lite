@@ -13,11 +13,11 @@ import sys
 from utils import *
 
 
-DEFAULT_BEGIN_DATE = '2010-01-01'
-DEFAULT_DAYS_PER_SEARCH = 15
+DEFAULT_BEGIN_DATE = '2015-01-01'
+DEFAULT_DAYS_PER_SEARCH = 30
 
 PAGE_DELAY = 1  # seconds
-RATE_LIMITED_DELAY = 30  # second
+RATE_LIMITED_DELAY = 45  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
     'from%3A{}%20' +
@@ -36,7 +36,7 @@ CHROME_OPTIONS.add_argument("--window-size=800,2000")
 
 TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
 ID_SELECTOR = 'a.css-4rbku5.css-18t94o4.css-901oao.r-1re7ezh.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0'
-RATE_LIMITED_SELECTOR = 'css-901oao.r-1re7ezh.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-117bsoe.r-bcqeeo.r-q4m81j.r-qvutc0'
+RATE_LIMITED_SELECTOR = 'div.css-18t94o4.css-1dbjc4n.r-urgr8i.r-42olwf.r-sdzlij.r-1phboty.r-rs99b7.r-1w2pmg.r-1vuscfd.r-1dhvaqw.r-1ny4l3l.r-1fneopy.r-o7ynqc.r-6416eg.r-lrvibr'
 
 
 ########################################################################
@@ -117,6 +117,8 @@ def scrape_one_page(driver, url, raw_dir):
 
 
 def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, raw_dir):
+    driver = get_driver(CHROME_OPTIONS)
+
     data = load_metadata(profile_name, begin_date_str, meta_dir)
     print(
         f'start scraping [{profile_name}], already has [{len(data["tweet_ids"])}] tweets, latest at [{data["latest_date"]}]')
@@ -156,6 +158,8 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
     print(
         f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
 
+    driver.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -180,7 +184,6 @@ if __name__ == "__main__":
 
     if args.quiet:
         CHROME_OPTIONS.add_argument("--headless")
-    driver = get_driver(CHROME_OPTIONS)
 
     for profile_name in profile_names:
         scrape_one_profile(
