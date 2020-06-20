@@ -15,10 +15,10 @@ from utils import *
 
 
 DEFAULT_BEGIN_DATE = '2015-01-01'
-DEFAULT_DAYS_PER_SEARCH = 7
+DEFAULT_DAYS_PER_SEARCH = 15
 
 PAGE_DELAY = 1.5  # seconds
-RATE_LIMITED_DELAY = 30  # second
+RATE_LIMITED_DELAY = 60  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
     'from%3A{}%20' +
@@ -198,21 +198,24 @@ if __name__ == "__main__":
     if args.quiet:
         CHROME_OPTIONS.add_argument("--headless")
 
-    with ProcessPoolExecutor(max_workers=args.workers) as exe:
+    if args.workers > 1:
+        with ProcessPoolExecutor(max_workers=args.workers) as exe:
+            for profile_name in profile_names:
+                sleep(PAGE_DELAY)
+                exe.submit(
+                    scrape_one_profile,
+                    profile_name,
+                    DEFAULT_BEGIN_DATE,
+                    DEFAULT_DAYS_PER_SEARCH,
+                    args.meta_dir,
+                    args.raw_dir
+                )
+    else:
         for profile_name in profile_names:
-            exe.submit(
-                scrape_one_profile,
-                profile_name,
-                DEFAULT_BEGIN_DATE,
-                DEFAULT_DAYS_PER_SEARCH,
-                args.meta_dir,
-                args.raw_dir
+            scrape_one_profile(
+                profile_name=profile_name,
+                begin_date_str=DEFAULT_BEGIN_DATE,
+                days_per_search=DEFAULT_DAYS_PER_SEARCH,
+                meta_dir=args.meta_dir,
+                raw_dir=args.raw_dir,
             )
-            # scrape_one_profile(
-            #     driver=driver,
-            #     profile_name=profile_name,
-            #     begin_date_str=DEFAULT_BEGIN_DATE,
-            #     days_per_search=DEFAULT_DAYS_PER_SEARCH,
-            #     meta_dir=args.meta_dir,
-            #     raw_dir=args.raw_dir,
-            # )
