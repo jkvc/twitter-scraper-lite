@@ -76,7 +76,7 @@ def get_driver(chromedriver_options=CHROME_OPTIONS):
     return driver
 
 
-def scrape_one_page(driver, url, profile_name, raw_dir, max_scroll_iter=300):
+def scrape_one_page(driver, url, profile_name, raw_dir, max_scroll_iter=3000):
     driver.get(url)
     scroll_down_to_load_all(driver, PAGE_DELAY)
 
