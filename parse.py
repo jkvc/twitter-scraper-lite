@@ -11,9 +11,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 from utils import *
 
-# USAGE: python parse.py <ids_dir> <raw_dir> <dst_dir>
-# this script writes json to <dst_dir> for each json profile in <ids_dir>
-
 TEXT_ELEM_CLASSNAME = 'css-901oao r-hkyrab r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-bnwqim r-qvutc0'
 STATS_ELEM_CLASSNAME = 'css-1dbjc4n r-18u37iz r-1wtj0ep r-156q2ks r-1mdbhws'
 REPLY_TO_ELEM_CLASSNAME = 'css-901oao r-1re7ezh r-1qd0xha r-a023e6 r-16dba41 r-ad9z0x r-bcqeeo r-qvutc0'
