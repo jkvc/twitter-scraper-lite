@@ -47,6 +47,8 @@ python parse.py -h
 
 when scraping, respect twitter's rate limiting detection, dont use above 4 workers (processes) or we risk a higher chance of being limited and result in wait time. when using more than 1 worker (i.e. multiprocessing), use `pkill python; pkill chromedriver; pkill Chrome` in a separate session to terminate since `ctrl+c` is not reliable.
 
+to use in another python script, call `scrape_one_profile` in `scrape.py`.
+
 ## overview
 
 twitter's official API has the following drawbacks:
