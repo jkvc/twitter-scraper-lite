@@ -62,15 +62,16 @@ for each profile, `scrape.py` performs the following:
 
 1. search tweets from that profile within a date range
 1. scroll down repeatedly to load all results
-1. extract the tweet id and raw html and save to disk
-2. go to the next date range, repeat 
+1. extract the tweet ids, save json to disk
+2. extract raw htmls, save to disk
+3. go to the next date range, repeat 
 
 for each profile, `parse.py` performs the following:
 
 1. pick one tweet id from the profile
 2. load raw html from disk, parse to extract a dict of information
-3. save to disk
-4. go to the next tweet id, repeat
+3. go to the next tweet id, repeat until there's no more unparsed tweets
+4. save json to disk
 
 on disk, the data is saved as:
 
