@@ -2,12 +2,11 @@
 
 # twitter-scraper-lite
 
-
-a super lightweight Twitter scraper
+A super lightweight Twitter scraper that scrapes the web frontend to get around the QPS limit.
 
 ## prerequisites
 
-to use this, you should be able to:
+to use this, you need to be able to:
 
 - write some python
 - inspect a webpage
@@ -37,16 +36,16 @@ download the correct version of chromedriver from [here](https://chromedriver.ch
 
 ## usage
 
-see
+both scripts auto-continues from where it previously left off, as long as the contents on the disk are unchanged since then.
+
+to run, see:
 
 ```
 python scrape.py -h
-```
-
-```
 python parse.py -h
 ```
 
+when scraping, respect twitter's rate limiting detection, dont use above 4 workers (processes) or we risk a higher chance of being limited and result in wait time. when using more than 1 worker (i.e. multiprocessing), use `pkill python; pkill chromedriver; pkill Chrome` in a separate session to terminate since `ctrl+c` is not reliable.
 
 ## overview
 
@@ -55,7 +54,9 @@ twitter's official API has the following drawbacks:
 - require dev login
 - rate limited
 
-this solution uses selenium to scrape and parse the front end webpage of twitter, specifically the search. 
+this solution uses selenium to scrape and parse the front end webpage of twitter, specifically the search, to get around the qps limit. 
+
+at the time of writing, at this config, it runs at around 6 tweets per second per process.
 
 for each profile, `scrape.py` performs the following:
 
@@ -88,9 +89,11 @@ on disk, the data is saved as:
 
 ## config
 
+at the time of writing, the selectors are funcitonal out-of-the-box, but twitter might change their UI and therefore change the css names, so we might need to update the css selectors in the future
+
 ### `scrape.py`
 
-configure `TWEET_SELECTOR` and `ID_SELECTOR` with the correct id selector, find this by inspecting the twitter's search page. [here's an example search page](https://twitter.com/search?q=from%3Abarackobama%20since%3A2020-06-14%20until%3A2020-07-01&src=typed_query&f=live). be sure to choose the one uniquely id each tweet box
+configure `TWEET_SELECTOR` and `ID_SELECTOR` with the correct id selector, find this by inspecting the twitter's search page. [here's an example search page](https://twitter.com/search?q=from%3Abarackobama%20since%3A2020-06-14%20until%3A2020-07-01&src=typed_query&f=live). be sure to choose the one uniquely id each tweet box.
 
 configure `NO_RESULT_SELECTOR` with the box that shows "no search result". [here's an example search page](https://twitter.com/search?q=from%3Abarackobama%20since%3A2029-01-01&src=typed_query&f=live). this is used such that when there's not tweet found, and there's not "no result" on the page, we know we're rate limited by twitter and should wait for a while.
 
