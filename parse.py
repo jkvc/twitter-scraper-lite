@@ -5,6 +5,7 @@ import datetime
 import argparse
 from tqdm import tqdm, trange
 from pprint import pprint
+from termcolor import colored
 from bs4 import BeautifulSoup
 from concurrent.futures import ProcessPoolExecutor
 
@@ -76,7 +77,7 @@ def parse_one_profile(id_filepath, raw_path, dst_path, hide_progress_bar=False):
         id_data = json.load(f)
     profile_name = id_data['profile_name']
     tweet_ids = set(id_data['tweet_ids'])
-    print(f'begin [{profile_name}]')
+    print(f'{colored("begin", "yellow")} [{profile_name}]')
 
     parsed_data = load_parsed_data(profile_name, dst_path)
     parsed_tweets = parsed_data['tweets']
@@ -87,7 +88,7 @@ def parse_one_profile(id_filepath, raw_path, dst_path, hide_progress_bar=False):
                 profile_name, tweet_id, raw_path)
 
     save_parsed_data(profile_name, dst_path, parsed_data)
-    print(f' done [{profile_name}]')
+    print(f' {colored("done", "cyan")} [{profile_name}]')
 
 
 if __name__ == "__main__":

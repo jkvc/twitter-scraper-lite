@@ -5,6 +5,7 @@ from time import sleep
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from pprint import pprint
+from termcolor import cprint
 import json
 import datetime
 import os
@@ -110,7 +111,7 @@ def scrape_one_page(driver, url, profile_name, raw_dir, max_scroll_iter=3000):
         pass
 
     if is_rate_limited(driver, tweet_ids):
-        print(f'rate limited, {profile_name}')
+        cprint(f'rate limited, {profile_name}', 'red')
         driver.delete_all_cookies()
         sleep(RATE_LIMITED_DELAY)
         return None
@@ -123,8 +124,9 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
     driver = get_driver(CHROME_OPTIONS)
 
     data = load_metadata(profile_name, begin_date_str, meta_dir)
-    print(
-        f'start scraping [{profile_name}], already has [{len(data["tweet_ids"])}] tweets, latest at [{data["latest_date"]}]')
+    cprint(
+        f'start scraping [{profile_name}], already has [{len(data["tweet_ids"])}] tweets, latest at [{data["latest_date"]}]',
+        'yellow')
     tweet_ids = set(data['tweet_ids'])
 
     begin_date = datetime.datetime.strptime(begin_date_str, '%Y-%m-%d')
@@ -163,8 +165,8 @@ def scrape_one_profile(profile_name, begin_date_str, days_per_search, meta_dir, 
 
         save_metadata(profile_name, data, meta_dir)
 
-    print(
-        f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets')
+    cprint(
+        f'done scraping [{profile_name}] with [{len(data["tweet_ids"])}] tweets', 'cyan')
 
     driver.close()
 
