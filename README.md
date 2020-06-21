@@ -2,7 +2,7 @@
 
 # twitter-scraper-lite
 
-A super lightweight Twitter scraper that scrapes the web frontend to get around the QPS limit.
+A selenium-based Twitter scraper that scrapes the web frontend to get around the QPS limit.
 
 ## prerequisites
 
