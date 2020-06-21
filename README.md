@@ -1,6 +1,7 @@
+<img src="twitter-scraper-lite.svg" alt="twitter-scraper-lite logo" width="100px">
+
 # twitter-scraper-lite
 
-<img src="twitter-scraper-lite.svg" alt="twitter-scraper-lite logo" width="100px">
 
 a super lightweight Twitter scraper
 
