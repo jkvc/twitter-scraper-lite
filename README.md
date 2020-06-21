@@ -38,7 +38,7 @@ download the correct version of chromedriver from [here](https://chromedriver.ch
 
 both scripts auto-continues from where it previously left off, as long as the contents on the disk are unchanged since then.
 
-to run, see:
+to run from the command line, see:
 
 ```
 python scrape.py -h
