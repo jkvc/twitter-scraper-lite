@@ -118,7 +118,7 @@ def save_parsed_data(profile_name, parsed_dir, parsed_data):
         json.dump(parsed_data, f, indent=2)
 
 
-def scroll_down_to_load_all(driver, delay):
+def scroll_down_to_load_all(driver, delay, max_scroll_iter=300):
     """repeatedly scroll to bottom of page to trigger auto load more
 
     Args:
@@ -127,7 +127,7 @@ def scroll_down_to_load_all(driver, delay):
     """
 
     scroll_height = 0
-    while True:
+    for _ in range(max_scroll_iter):
         scroll_to_bottom(driver)
         sleep(delay)
         new_scroll_height = driver.execute_script(

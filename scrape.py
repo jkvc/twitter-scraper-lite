@@ -76,7 +76,7 @@ def get_driver(chromedriver_options=CHROME_OPTIONS):
     return driver
 
 
-def scrape_one_page(driver, url, profile_name, raw_dir):
+def scrape_one_page(driver, url, profile_name, raw_dir, max_scroll_iter=300):
     driver.get(url)
     scroll_down_to_load_all(driver, PAGE_DELAY)
 
@@ -86,7 +86,7 @@ def scrape_one_page(driver, url, profile_name, raw_dir):
         prev_scroll_height = 0
         sleep(.1)
 
-        while True:
+        for _ in range(max_scroll_iter):
             tweet_elems = driver.find_elements_by_css_selector(TWEET_SELECTOR)
             try:
                 for elem in reversed(tweet_elems):
