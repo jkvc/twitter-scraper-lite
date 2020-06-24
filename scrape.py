@@ -18,7 +18,7 @@ from utils import *
 DEFAULT_BEGIN_DATE = '2015-01-01'
 DEFAULT_DAYS_PER_SEARCH = 15
 
-PAGE_DELAY = 1.5  # seconds
+PAGE_DELAY = 2.5 # seconds
 RATE_LIMITED_DELAY = 60  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
