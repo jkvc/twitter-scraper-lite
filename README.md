@@ -58,7 +58,7 @@ twitter's official API has the following drawbacks:
 
 this solution uses selenium to scrape and parse the front end webpage of twitter, specifically the search, to get around the qps limit. 
 
-at the time of writing, at this config, it runs at around 6 tweets per second per process.
+at the time of writing, at this config, it runs at around 2 tweets per second per process.
 
 for each profile, `scrape.py` performs the following:
 
