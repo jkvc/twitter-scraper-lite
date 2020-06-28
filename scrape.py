@@ -16,9 +16,9 @@ from utils import *
 
 
 DEFAULT_BEGIN_DATE = '2015-01-01'
-DEFAULT_DAYS_PER_SEARCH = 15
+DEFAULT_DAYS_PER_SEARCH = 3
 
-PAGE_DELAY = 2.5 # seconds
+PAGE_DELAY = 1  # seconds
 RATE_LIMITED_DELAY = 60  # second
 BASEURL = (
     'https://twitter.com/search?q=' +
@@ -189,6 +189,10 @@ if __name__ == "__main__":
         help="don't show browser window",
         action='store_true',
     )
+    parser.add_argument(
+        '-p', '--proxy',
+        help='proxy address and port'
+    )
     args = parser.parse_args()
 
     with open(args.profiles) as f:
@@ -199,6 +203,9 @@ if __name__ == "__main__":
 
     if args.quiet:
         CHROME_OPTIONS.add_argument("--headless")
+
+    if args.proxy:
+        CHROME_OPTIONS.add_argument(f'--proxy-server={args.proxy}')
 
     if args.workers > 1:
         with ProcessPoolExecutor(max_workers=args.workers) as exe:
