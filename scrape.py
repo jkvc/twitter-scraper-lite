@@ -15,8 +15,8 @@ import sys
 from utils import *
 
 
-DEFAULT_BEGIN_DATE = '2015-01-01'
-DEFAULT_DAYS_PER_SEARCH = 3
+DEFAULT_BEGIN_DATE = '2010-01-01'
+DEFAULT_DAYS_PER_SEARCH = 10
 
 PAGE_DELAY = 1  # seconds
 RATE_LIMITED_DELAY = 60  # second
@@ -39,9 +39,9 @@ CHROME_OPTIONS.add_argument("--window-size=800,2000")
 prefs = {"profile.managed_default_content_settings.images": 2}
 CHROME_OPTIONS.add_experimental_option("prefs", prefs)
 
-TWEET_SELECTOR = 'div.css-1dbjc4n.r-my5ep6.r-qklmqi.r-1adg3ll'
-ID_SELECTOR = 'a.css-4rbku5.css-18t94o4.css-901oao.r-1re7ezh.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0'
-NO_RESULT_SELECTOR = 'div.css-901oao.r-hkyrab.r-1qd0xha.r-1b6yd1w.r-vw2c0b.r-ad9z0x.r-15d164r.r-bcqeeo.r-q4m81j.r-qvutc0'
+TWEET_SELECTOR = 'div.css-1dbjc4n.r-eqz5dr.r-16y2uox.r-1wbh5a2'
+ID_SELECTOR ='a.css-4rbku5.css-18t94o4.css-901oao.r-m0bqgq.r-1loqt21.r-1q142lx.r-1qd0xha.r-a023e6.r-16dba41.r-ad9z0x.r-bcqeeo.r-3s2u2q.r-qvutc0' 
+NO_RESULT_SELECTOR = 'div.css-901oao.r-18jsvk2.r-1qd0xha.r-1b6yd1w.r-b88u0q.r-ad9z0x.r-15d164r.r-bcqeeo.r-q4m81j.r-qvutc0' 
 
 ########################################################################
 
@@ -89,15 +89,15 @@ def scrape_one_page(driver, url, profile_name, raw_dir, max_scroll_iter=3000):
 
         for _ in range(max_scroll_iter):
             tweet_elems = driver.find_elements_by_css_selector(TWEET_SELECTOR)
-            try:
-                for elem in reversed(tweet_elems):
+            for elem in reversed(tweet_elems):
+                try:
                     tweet_id = get_tweet_id(elem)
                     if tweet_id not in tweet_ids:
                         raw_html_str = elem.get_attribute('outerHTML')
                         save_raw(tweet_id, raw_html_str, raw_dir, profile_name)
                         tweet_ids.add(tweet_id)
-            except (StaleElementReferenceException, WebDriverException):
-                continue
+                except (StaleElementReferenceException, WebDriverException) as e:
+                    continue
 
             scroll_down_viewheight(driver)
             sleep(.1)
