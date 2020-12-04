@@ -20,9 +20,9 @@ from tqdm import tqdm
 from utils import *
 
 DEFAULT_BEGIN_DATE = "2010-01-01"
-DEFAULT_DAYS_PER_SEARCH = 10
+DEFAULT_DAYS_PER_SEARCH = 50
 
-PAGE_DELAY = 1  # seconds
+PAGE_DELAY = 2  # seconds
 RATE_LIMITED_DELAY = 60  # second
 BASEURL = (
     "https://twitter.com/search?q="
