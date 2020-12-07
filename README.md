@@ -49,6 +49,8 @@ when scraping, respect twitter's rate limiting detection, dont use above 4 worke
 
 to use in another python script, call `scrape_one_profile` in `scrape.py`.
 
+`parse.py` needs some configuring as well, and provide limited information. a better alternative is to use twarc to hydrate the scraped ids (https://github.com/DocNow/twarc)
+
 ## overview
 
 twitter's official API has the following drawbacks:
