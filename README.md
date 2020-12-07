@@ -55,6 +55,7 @@ to use in another python script, call `scrape_one_profile` in `scrape.py`.
 
 twitter's official API has the following drawbacks:
 
+- can only get 3200 most recent tweets
 - require dev login
 - rate limited
 
